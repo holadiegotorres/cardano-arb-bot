@@ -1,0 +1,84 @@
+[package]
+name = "cardano-arb-bot"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance Cardano DEX arbitrage bot targeting USDCx and multi-token opportunities"
+license = "MIT"
+repository = "https://github.com/holadiegotorres/cardano-arb-bot"
+
+[dependencies]
+# Cardano primitives & transaction building
+pallas-primitives = "0.32"
+pallas-codec = "0.32"
+pallas-crypto = "0.32"
+pallas-addresses = "0.32"
+pallas-traverse = "0.32"
+pallas-txbuilder = "0.32"
+pallas-network = "0.32"
+
+# Higher-level tx builder
+whisky = "1.0"
+
+# Blockfrost API client
+blockfrost = "0.1"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP client for DEX APIs
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Math (fixed-point for precise arb calculations)
+rust_decimal = "1"
+rust_decimal_macros = "1"
+num-bigint = "0.4"
+
+# Crypto
+ed25519-dalek = "2"
+hex = "0.4"
+bech32 = "0.11"
+
+# Timing
+chrono = { version = "0.4", features = ["serde"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Async traits
+async-trait = "0.1"
+
+# Graph algorithms (for triangular arb path finding)
+petgraph = "0.7"
+
+# Rate limiting
+governor = "0.8"
+
+# Metrics
+prometheus = "0.14"
+
+# Notification support
+lettre = { version = "0.11", features = ["tokio1-rustls-tls"], optional = true }
+
+[features]
+default = []
+notifications = ["lettre"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

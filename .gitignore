@@ -1,0 +1,28 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+
+# Config with secrets
+config.toml
+
+# Wallet keys — NEVER commit these
+/keys/
+*.skey
+*.vkey
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Environment
+.env

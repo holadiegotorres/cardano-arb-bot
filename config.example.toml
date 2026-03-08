@@ -1,0 +1,136 @@
+# ============================================================================
+# Cardano ARB Bot — Configuration
+# ============================================================================
+# Copy this file to config.toml and fill in your values.
+# NEVER commit config.toml (it contains your API keys and wallet path).
+
+# --- Network ---
+[network]
+network_id = "mainnet"        # "mainnet", "preprod", or "preview"
+protocol_magic = 764824073    # Mainnet magic
+# node_socket = "/path/to/node.socket"  # Optional: direct node connection
+
+# --- Wallet ---
+[wallet]
+signing_key_path = "./keys/payment.skey"   # Path to your signing key
+min_ada_reserve = 50                        # Never go below 50 ADA in wallet
+max_trade_amount_ada = 500                  # Max ADA per trade
+
+# Optional: pre-designated collateral UTXO for Plutus scripts
+# collateral_utxo = "tx_hash#output_index"
+
+# --- Blockfrost API ---
+[blockfrost]
+api_key = "YOUR_BLOCKFROST_API_KEY"         # Get one at https://blockfrost.io
+# base_url = "https://cardano-mainnet.blockfrost.io/api/v0"  # Default: mainnet
+rate_limit_rps = 10                         # Requests per second (free tier: 10)
+
+# --- Pool Scanner ---
+[scanner]
+poll_interval_ms = 500                      # Scan every 500ms
+min_pool_liquidity_ada = 1000               # Ignore pools with < 1000 ADA TVL
+max_pools = 500                             # Track up to 500 pools
+
+# Priority tokens to always monitor (policy_id.asset_name in hex)
+# These get scanned first and always included regardless of liquidity filters.
+priority_tokens = [
+    "lovelace",                                                                    # ADA
+    # USDCx (Circle xReserve bridge — launched Feb 27, 2026)
+    "1f3aec8bfe7ea4fe14c5f121e2a92e301afe414147860d557cac7e34.5553444378",        # USDCx
+    # DJED (Coti algorithmic stablecoin)
+    "8db269c3ec630e06ae29f74bc39edd1f87c819f1056206e879a1cd61.444a4544",            # DJED
+    # iUSD (Indigo Protocol synthetic USD)
+    "f66d78b4a3cb3d37afa0ec36461e51ecbde00f26c8f0a68f94b69880.69555344",            # iUSD
+    # MIN (Minswap governance token — useful for MIN/ADA arb)
+    "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6.4d494e",              # MIN
+    # SUNDAE (SundaeSwap governance token)
+    "9a9693a9a37912a5097918f97918d15240c92ab729a0b7c4aa144d77.53554e444145",        # SUNDAE
+    # WRT (WingRiders governance token)
+    "c0ee29a85b13209423b10447d3c2e6a50641a15c57770e27cb9d5073.57696e67526964657273", # WRT
+]
+
+# --- Price Engine ---
+[price_engine]
+max_price_age_ms = 10000                    # Discard prices older than 10s
+min_spread_pct = 0.5                        # Flag spreads > 0.5%
+enable_ewma = true                          # Smooth price signals
+ewma_alpha = 0.3                            # EWMA responsiveness (0.0-1.0)
+
+# --- Strategies ---
+[strategies]
+enable_dex_to_dex = true                    # Direct cross-DEX arb
+enable_triangular = true                    # Multi-hop triangular arb
+max_triangular_hops = 4                     # Max tokens in a cycle (3 = triangle)
+min_profit_ada = 2.0                        # Only execute if profit > 2 ADA
+min_confidence = 0.6                        # Confidence threshold (0.0-1.0)
+max_slippage_pct = 1.0                      # Max 1% slippage tolerance
+profit_safety_factor = 0.7                  # Conservative: assume only 70% of estimated profit
+
+# --- Transaction Executor ---
+[executor]
+tx_ttl_slots = 300                          # TX valid for ~5 minutes (300 slots × 1s)
+max_fee_lovelace = 2000000                  # Max 2 ADA fee per transaction
+confirmation_blocks = 1                     # Wait for 1 confirmation
+max_retries = 10                            # Retry submission up to 10 times
+retry_delay_ms = 3000                       # 3 second delay between retries
+
+# ============================================================================
+# DEX Configurations
+# ============================================================================
+# Each DEX has its own pool validator, order validator, and fee structure.
+# Update script hashes with current mainnet values from each DEX's docs.
+
+# --- Minswap V2 (Confirmed from github.com/minswap/minswap-dex-v2) ---
+[dexes.minswap]
+enabled = true
+pool_script_hash = "ea07b733d932129c378af627436e7cbc2ef0bf96e0036bb51b3bde6b"
+order_script_hash = "c3e28c36c3447315ba5a56f33da6a6ddc1770a876a8d9f0cb3a97c4c"
+pool_nft_policy_id = "f5808c2c990d86da54bfc97d89cee6efa20cd8461616359478d96b4c"
+swap_fee_pct = 0.3
+batcher_fee_lovelace = 2000000              # 2 ADA batcher fee
+# Pool creation address: addr1z84q0denmyep98ph3tmzwsmw0j7zau9ljmsqx6a4rvaau66j2c79gy9l76sdg0xwhd7r0c0kna0tycz4y5s6mlenh8pq777e2a
+# Factory script hash: 7bc5fbd41a95f561be84369631e0e35895efb0b73e0a7480bb9ed730
+# LP token policy ID: f5808c2c990d86da54bfc97d89cee6efa20cd8461616359478d96b4c
+# Batcher stake addr: stake17y02a946720zw6pw50upt2arvxsvvpvaghjtl054h0f0gjsfyjz59
+
+# --- SundaeSwap V3 (Aiken contracts, github.com/SundaeSwap-finance/sundae-contracts) ---
+# NOTE: V3 script hashes must be extracted from the sundae-sdk source or by
+# building the contracts from source. Check packages/core in the sundae-sdk repo.
+# SUNDAE token policy: 9a9693a9a37912a5097918f97918d15240c92ab729a0b7c4aa144d77
+# Validators: order.ak, pool.ak, settings.ak, stake.ak, pool_stake.ak
+[dexes.sundaeswap]
+enabled = true
+pool_script_hash = "TODO_BUILD_FROM_sundae-contracts_REPO"
+order_script_hash = "TODO_BUILD_FROM_sundae-contracts_REPO"
+pool_nft_policy_id = "TODO_CHECK_sundae-sdk_packages/core"
+swap_fee_pct = 0.3
+batcher_fee_lovelace = 2500000              # 2.5 ADA batcher fee
+
+# --- WingRiders V1 (Confirmed from Cardanoscan + dex-blockfrost-adapter) ---
+# NOTE: WingRiders uses per-pool addresses (each ADA<>Token pool has a unique address).
+# The script hash below is the payment credential extracted from the known V1 pool address.
+# V1 Pool addr: addr1z8nvjzjeydcn4atcd93aac8allvrpjn7pjr2qsweukpnay2lz4g5wy95jwh2l6ca2jyq5xu8aga0fh3jyplef6m0npeslcq0pj
+# V1 Request addr: addr1wxr2a8htmzuhj39y2gq7ftkpxv98y2g67tg8zezthgq4jkg0a4ul4
+# WRT token policy: c0ee29a85b13209423b10447d3c2e6a50641a15c57770e27cb9d5073
+# V2 rewritten in Plutarch — check github.com/WingRiders for latest addresses
+[dexes.wingriders]
+enabled = true
+pool_script_hash = "addr1z8nvjzjeydcn4atcd93aac8allvrpjn7pjr2qsweukpnay2lz4g5wy95jwh2l6ca2jyq5xu8aga0fh3jyplef6m0npeslcq0pj"
+order_script_hash = "addr1wxr2a8htmzuhj39y2gq7ftkpxv98y2g67tg8zezthgq4jkg0a4ul4"
+pool_nft_policy_id = "TODO_EXTRACT_FROM_dex-serializer_OR_blockfrost-adapter"
+swap_fee_pct = 0.35
+batcher_fee_lovelace = 2000000
+
+# --- MuesliSwap (Forked from Minswap V1, github.com/MuesliSwapTeam/muesliswap-cardano-pool-contracts) ---
+# NOTE: MuesliSwap pool contracts are based on Minswap's LP contracts (GPLv3).
+# Fees are parameterized per-pool (not hardcoded like Minswap V1).
+# Script hashes need to be compiled from the muesliswap-cardano-pool-contracts repo.
+# The orderbook contracts are in a separate repo: muesliswap-cardano-contracts
+[dexes.muesliswap]
+enabled = true
+pool_script_hash = "TODO_BUILD_FROM_muesliswap-cardano-pool-contracts"
+order_script_hash = "TODO_BUILD_FROM_muesliswap-cardano-contracts"
+pool_nft_policy_id = "TODO_BUILD_FROM_muesliswap-cardano-pool-contracts"
+swap_fee_pct = 0.3
+batcher_fee_lovelace = 1700000              # 1.7 ADA batcher fee
+api_url = "https://api.muesliswap.com"
