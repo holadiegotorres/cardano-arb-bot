@@ -10,6 +10,16 @@ use tracing::debug;
 use super::types::*;
 use crate::config::{BlockfrostConfig, DexConfig};
 
+fn decode_bech32_to_raw(addr: &str) -> Result<Vec<u8>> {
+    if addr.starts_with("addr") {
+        let (_hrp, data) = bech32::decode(addr)
+            .context("Invalid Bech32 address")?;
+        Ok(data)
+    } else {
+        hex::decode(addr).context("Invalid hex address")
+    }
+}
+
 pub struct SundaeSwapConnector {
     config: DexConfig,
     http_client: reqwest::Client,
@@ -150,9 +160,43 @@ impl super::DexConnector for SundaeSwapConnector {
         input_asset: &str,
         input_amount: u64,
         min_output: u64,
-        _receiver_address: &str,
+        receiver_address: &str,
     ) -> Result<SwapOrder> {
-        let datum = Vec::new(); // TODO: SundaeSwap V2 datum encoding
+        // Build SundaeSwap V3 swap order datum
+        let receiver_raw = decode_bech32_to_raw(receiver_address)?;
+        // Extract payment key hash from address bytes (bytes 1..29)
+        let owner_key_hash = if receiver_raw.len() >= 29 {
+            receiver_raw[1..29].to_vec()
+        } else {
+            vec![0u8; 28]
+        };
+        // Pool ident from pool_id (first 32 bytes of pool identifier)
+        let pool_ident = hex::decode(&pool.pool_id.replace('#', "").chars().take(64).collect::<String>())
+            .unwrap_or_default();
+
+        // Determine offer and desired assets
+        let (offer_policy, offer_name, desired_policy, desired_name) =
+            if input_asset == "lovelace" || input_asset == pool.asset_a.to_subject() {
+                ("", "", pool.asset_b.policy_id.as_str(), pool.asset_b.asset_name.as_str())
+            } else {
+                let parts: Vec<&str> = input_asset.split('.').collect();
+                let (ip, ia) = if parts.len() == 2 { (parts[0], parts[1]) } else { ("", "") };
+                (ip, ia, "", "")
+            };
+
+        let datum_data = crate::datum::sundaeswap::build_swap_order_datum(
+            &pool_ident,
+            &owner_key_hash,
+            &receiver_raw,
+            offer_policy,
+            offer_name,
+            input_amount,
+            desired_policy,
+            desired_name,
+            min_output,
+            crate::datum::sundaeswap::BATCHER_FEE_LOVELACE,
+        )?;
+        let datum = datum_data.to_cbor()?;
 
         let value_lovelace = if input_asset == "lovelace" {
             input_amount + self.config.batcher_fee_lovelace + 2_000_000

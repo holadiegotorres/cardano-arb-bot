@@ -12,6 +12,16 @@ use tracing::debug;
 use super::types::*;
 use crate::config::{BlockfrostConfig, DexConfig};
 
+fn decode_bech32_to_raw(addr: &str) -> Result<Vec<u8>> {
+    if addr.starts_with("addr") {
+        let (_hrp, data) = bech32::decode(addr)
+            .context("Invalid Bech32 address")?;
+        Ok(data)
+    } else {
+        hex::decode(addr).context("Invalid hex address")
+    }
+}
+
 /// Response from MuesliSwap pool API
 #[derive(Debug, Deserialize)]
 struct MuesliPoolResponse {
@@ -188,9 +198,30 @@ impl super::DexConnector for MuesliSwapConnector {
         input_asset: &str,
         input_amount: u64,
         min_output: u64,
-        _receiver_address: &str,
+        receiver_address: &str,
     ) -> Result<SwapOrder> {
-        let datum = Vec::new(); // TODO: MuesliSwap order datum
+        // Build MuesliSwap swap order datum
+        let receiver_raw = decode_bech32_to_raw(receiver_address)?;
+
+        // Determine the desired output asset
+        let (desired_policy, desired_name) =
+            if input_asset == "lovelace" || input_asset == pool.asset_a.to_subject() {
+                (pool.asset_b.policy_id.as_str(), pool.asset_b.asset_name.as_str())
+            } else {
+                // Swapping token for ADA — desired is ADA (empty policy)
+                ("", "")
+            };
+
+        let datum_data = crate::datum::muesliswap::build_swap_order_datum(
+            &receiver_raw,   // sender
+            &receiver_raw,   // receiver
+            desired_policy,
+            desired_name,
+            min_output,
+            crate::datum::muesliswap::BATCHER_FEE_LOVELACE,
+            crate::datum::muesliswap::OUTPUT_ADA_LOVELACE,
+        )?;
+        let datum = datum_data.to_cbor()?;
 
         let value_lovelace = if input_asset == "lovelace" {
             input_amount + self.config.batcher_fee_lovelace + 2_000_000

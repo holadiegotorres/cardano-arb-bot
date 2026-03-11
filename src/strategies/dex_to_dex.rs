@@ -24,7 +24,7 @@ pub fn find_dex_to_dex_opportunities(
     let mut opportunities = Vec::new();
 
     // For each tracked asset, check if there's a meaningful spread
-    let spread_opps = engine.get_spread_opportunities(config.min_profit_ada * Decimal::ZERO); // Get all spreads
+    let spread_opps = engine.get_spread_opportunities(Decimal::ZERO); // Get all spreads — profit filtering happens below
 
     for (book, spread) in spread_opps {
         let best_buy = match book.best_buy() {

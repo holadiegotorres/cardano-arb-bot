@@ -8,24 +8,16 @@ repository = "https://github.com/holadiegotorres/cardano-arb-bot"
 
 [dependencies]
 # Cardano primitives & transaction building
-pallas-primitives = "0.32"
-pallas-codec = "0.32"
-pallas-crypto = "0.32"
-pallas-addresses = "0.32"
-pallas-traverse = "0.32"
-pallas-txbuilder = "0.32"
-pallas-network = "0.32"
-
-# Higher-level tx builder
-whisky = "1.0"
-
-# Blockfrost API client
-blockfrost = "0.1"
+pallas-primitives = "0.30"
+pallas-codec = "0.30"
+pallas-crypto = "0.30"
+pallas-addresses = "0.30"
+pallas-traverse = "0.30"
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
-# HTTP client for DEX APIs
+# HTTP client for DEX APIs and Blockfrost
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 
 # Serialization
@@ -44,12 +36,13 @@ anyhow = "1"
 # Math (fixed-point for precise arb calculations)
 rust_decimal = "1"
 rust_decimal_macros = "1"
-num-bigint = "0.4"
 
-# Crypto
-ed25519-dalek = "2"
+# Crypto — Ed25519 signing + Blake2b hashing
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+blake2b_simd = "1"
 hex = "0.4"
 bech32 = "0.11"
+rand = "0.8"
 
 # Timing
 chrono = { version = "0.4", features = ["serde"] }
@@ -61,13 +54,10 @@ clap = { version = "4", features = ["derive"] }
 async-trait = "0.1"
 
 # Graph algorithms (for triangular arb path finding)
-petgraph = "0.7"
+petgraph = "0.6"
 
 # Rate limiting
-governor = "0.8"
-
-# Metrics
-prometheus = "0.14"
+governor = "0.6"
 
 # Notification support
 lettre = { version = "0.11", features = ["tokio1-rustls-tls"], optional = true }

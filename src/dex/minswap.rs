@@ -9,11 +9,22 @@
 //! specific datum structure encoding the desired swap parameters.
 
 use anyhow::{Context, Result};
-use std::sync::Arc;
 use tracing::{debug, trace};
 
 use super::types::*;
 use crate::config::{BlockfrostConfig, DexConfig};
+
+/// Decode a Bech32 Cardano address to raw address bytes
+fn decode_bech32_to_raw(addr: &str) -> Result<Vec<u8>> {
+    if addr.starts_with("addr") {
+        let (_hrp, data) = bech32::decode(addr)
+            .context("Invalid Bech32 address")?;
+        Ok(data)
+    } else {
+        // Hex-encoded address bytes
+        hex::decode(addr).context("Invalid hex address")
+    }
+}
 
 pub struct MinswapConnector {
     config: DexConfig,
@@ -182,19 +193,21 @@ impl super::DexConnector for MinswapConnector {
         min_output: u64,
         receiver_address: &str,
     ) -> Result<SwapOrder> {
-        // Minswap V2 order datum structure:
-        // Constructor 0 [
-        //   sender: Address,
-        //   receiver: Address,
-        //   receiver_datum_hash: Maybe Hash,
-        //   step: SwapExactIn { desired_asset, min_receive },
-        //   batcher_fee: Int,
-        //   deposit: Int
-        // ]
+        // Determine swap direction: A→B or B→A
+        let a_to_b = input_asset == "lovelace" || input_asset == pool.asset_a.to_subject();
 
-        // For now, build a placeholder datum — the actual CBOR encoding
-        // will use pallas-codec in production
-        let datum = Vec::new(); // TODO: Encode proper Plutus datum
+        // Build the Minswap V2 SwapExactIn datum using our datum encoder
+        let receiver_raw = decode_bech32_to_raw(receiver_address)?;
+
+        let datum_data = crate::datum::minswap::build_swap_exact_in_datum(
+            &receiver_raw,   // sender = receiver for arb bot (refunds go to us)
+            &receiver_raw,   // receiver = our wallet
+            a_to_b,
+            min_output,
+            self.config.batcher_fee_lovelace,
+            2_000_000,       // output ADA (min UTXO)
+        )?;
+        let datum = datum_data.to_cbor()?;
 
         let value_lovelace = if input_asset == "lovelace" {
             input_amount + self.config.batcher_fee_lovelace + 2_000_000 // min ADA for UTXO

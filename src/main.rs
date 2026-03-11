@@ -4,7 +4,9 @@
 //! USDCx (the Circle-backed stablecoin launched Feb 2026) and multi-token
 //! opportunities across Minswap, SundaeSwap, WingRiders, and MuesliSwap.
 
+mod blockfrost_client;
 mod config;
+mod datum;
 mod dex;
 mod executor;
 mod price_engine;
@@ -97,9 +99,12 @@ async fn main() -> Result<()> {
         config.strategies.clone(),
     );
 
+    let blockfrost = blockfrost_client::BlockfrostClient::new(&config.blockfrost);
+
     let executor = TransactionExecutor::new(
         wallet.clone(),
         dex_registry.clone(),
+        blockfrost,
         config.executor.clone(),
         cli.dry_run,
     );

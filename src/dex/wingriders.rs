@@ -11,6 +11,16 @@ use tracing::debug;
 use super::types::*;
 use crate::config::{BlockfrostConfig, DexConfig};
 
+fn decode_bech32_to_raw(addr: &str) -> Result<Vec<u8>> {
+    if addr.starts_with("addr") {
+        let (_hrp, data) = bech32::decode(addr)
+            .context("Invalid Bech32 address")?;
+        Ok(data)
+    } else {
+        hex::decode(addr).context("Invalid hex address")
+    }
+}
+
 pub struct WingRidersConnector {
     config: DexConfig,
     http_client: reqwest::Client,
@@ -170,9 +180,22 @@ impl super::DexConnector for WingRidersConnector {
         input_asset: &str,
         input_amount: u64,
         min_output: u64,
-        _receiver_address: &str,
+        receiver_address: &str,
     ) -> Result<SwapOrder> {
-        let datum = Vec::new(); // TODO: WingRiders datum encoding
+        // Build WingRiders swap request datum
+        let receiver_raw = decode_bech32_to_raw(receiver_address)?;
+        let a_to_b = input_asset == "lovelace" || input_asset == pool.asset_a.to_subject();
+
+        // Deadline: 5 minutes from now
+        let deadline = crate::datum::wingriders::compute_deadline(300);
+
+        let datum_data = crate::datum::wingriders::build_swap_request_datum(
+            &receiver_raw,
+            deadline,
+            a_to_b,
+            min_output,
+        )?;
+        let datum = datum_data.to_cbor()?;
 
         let value_lovelace = if input_asset == "lovelace" {
             input_amount + self.config.batcher_fee_lovelace + 2_000_000
